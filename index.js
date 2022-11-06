@@ -22,23 +22,20 @@ const client = new MongoClient(uri, {
 });
 
 // token verify functuin
-const tokenVerify = (req, res, next) => {
-  const authHeader = req.headers.authorazitation;
+const verifyTOken = (req, res, next) => {
+  const bearerToken = req.headers.authorazitation;
 
-  console.log(authHeader);
-
-  if (!authHeader) {
-    return res.status(401).send({ massege: "Unauthorazid User" });
+  if (!bearerToken) {
+    return res.status(401).sent({ message: "unauthorazin access" });
+  } else {
+    const token = bearerToken.split(" ")[1];
+    jwt.verify(token, process.env.JWT_ACCESS_TOKEN, (err, decoded) => {
+      if (err) {
+        return res.status(401).sent({ message: "unauthorazin access" });
+      }
+      req.decoded = decoded;
+    });
   }
-
-  const token = authHeader.split(" ")[1];
-
-  jwt.verify(token, process.env.JWT_ACCESS_TOKEN, (err, decoded) => {
-    if (err) {
-      return res.status(401).send({ massege: "Unauthorazid User" });
-    }
-    req.decoded = decoded;
-  });
 
   next();
 };
@@ -80,25 +77,24 @@ const run = async () => {
       res.send(result);
     });
 
-    app.get("/orders", tokenVerify, async (req, res) => {
+    app.get("/orders", verifyTOken, async (req, res) => {
       const userEmail = req.query.email;
 
       const decoded = req.decoded;
 
       if (decoded.email !== userEmail) {
-        res.status(403).send({ massage: "unauthorazid access" });
+        return res.status(403).send({ massage: "unauthorazid access" });
       }
+
       const query = { email: userEmail };
       const curser = orderCollection.find(query);
       const result = await curser.toArray();
-      console.log(result);
       res.send(result);
     });
 
     app.delete("/deleted", async (req, res) => {
       const id = req.query.id;
 
-      // const userOrder = { email: userEmail };
       const query = { _id: ObjectId(id) };
       const result = await orderCollection.deleteOne(query);
 
